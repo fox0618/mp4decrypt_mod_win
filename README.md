@@ -1,11 +1,9 @@
-# mp4decrypt_mod_linux
+# mp4decrypt_mod_win
 
 Modded version of mp4decrypt from:
  - https://github.com/NanDesuKa-FR/mp4decrypt_mod_linux
  - https://www.bento4.com/
 
-## INFO:
-- Just modified a little to 
 ## **CHANGELOGS**:
 ## [1.5] | 2021-12-29
 - Changed progressbar
