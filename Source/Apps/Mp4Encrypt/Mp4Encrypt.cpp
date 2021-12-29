@@ -55,8 +55,8 @@ PrintUsageAndExit()
         "     MARLIN-IPMP-ACGK, ISMA-IAEC, PIFF-CBC, PIFF-CTR, MPEG-CENC,\n"
         "     MPEG-CBC1, MPEG-CENS, MPEG-CBCS\n"
         "  Options:\n"
-        "  --show-progress\n"
-        "      Show progress details\n"
+        "  --silent\n"
+        "      Don't Show progress bar\n"
         "  --fragments-info <filename>\n"
         "      Encrypt the fragments read from <input>, with track info read\n"
         "      from <filename>\n"
@@ -337,8 +337,8 @@ main(int argc, char** argv)
                 return 1;
             }
             kms_uri = arg;
-        } else if (!strcmp(arg, "--show-progress")) {
-            show_progress = true;
+        } else if (!strcmp(arg, "--silent")) {
+            show_progress = false;
         } else if (!strcmp(arg, "--strict")) {
             strict = true;
         } else if (!strcmp(arg, "--key")) {

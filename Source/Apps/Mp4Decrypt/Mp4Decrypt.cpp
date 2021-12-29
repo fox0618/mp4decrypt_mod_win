@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
+using namespace std;
 #include <iomanip>
 #include <chrono>
 
@@ -40,7 +41,7 @@
 /*----------------------------------------------------------------------
 |   constants
 +---------------------------------------------------------------------*/
-#define BANNER "MP4 Decrypter - Version 1.4 Modified\n"\
+#define BANNER "MP4 Decrypter - Version 1.5 | 2021-12-29 | Modified by zackmark29\n"\
                "(Bento4 Version " AP4_VERSION_STRING ")\n"\
                "(c) 2002-2015 Axiomatic Systems, LLC"
  
@@ -53,9 +54,9 @@ PrintUsageAndExit()
     fprintf(stderr, 
             BANNER 
             "\n\n"
-            "usage: mp4decrypt [options] <input> <output>\n"
+            "usage: mp4decrypt [options] <input> <output> <info>\n"
             "Options are:\n"
-            "  --show-progress : show progress details\n"
+            "  --silent : Don't show progress bar\n"
             "  --key <id>:<k>\n"
             "      <id> is either a track ID in decimal or a 128-bit KID in hex,\n"
             "      <k> is a 128-bit key in hex\n"
@@ -79,20 +80,22 @@ public:
     AP4_Result OnProgress(unsigned int step, unsigned int total);
 };
 
+const char* info = NULL;
+
 AP4_Result
 ProgressListener::OnProgress(unsigned int step, unsigned int total)
 {
-	int barWidth = 70;
-	fprintf(stdout, "[");
-	float progress = (float)step / (float)total;
-	int pos = barWidth * progress;
-	for (int i = 0; i < barWidth; ++i) {
-		if (i < pos) fprintf(stdout, "=");
-		else if (i == pos) fprintf(stdout, ">");
-		else fprintf(stdout, " ");
+    int barWidth = 70;
+    printf("%s[", info);
+    float progress = (float)step / (float)total;
+    int pos = barWidth * progress;
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) printf("%c", (char)254u);
+        else if (i == pos) printf("=");
+        else printf(" ");
     }
-	fprintf(stdout, "] %d %\r", int(progress * 100.0));
-	fflush(stdout);
+    printf("] %d%s %\r", int(progress * 100.0), "%");
+    fflush(stdout);
     return AP4_SUCCESS;
 }
 
@@ -134,21 +137,22 @@ main(int argc, char** argv)
     // parse options
     const char* input_filename = NULL;
     const char* output_filename = NULL;
+    info = NULL;
     const char* fragments_info_filename = NULL;
-    bool        show_progress = false;
+    bool        show_progress = true;
 
     char* arg;
     while ((arg = *++argv)) {
         if (!strcmp(arg, "--key")) {
             arg = *++argv;
             if (arg == NULL) {
-                fprintf(stderr, "ERROR: missing argument after --key option\n");
+                fprintf(stderr, "[ERROR]: missing argument after --key option\n");
                 return 1;
             }
             char* keyid_text = NULL;
             char* key_text = NULL;
             if (AP4_SplitArgs(arg, keyid_text, key_text)) {
-                fprintf(stderr, "ERROR: invalid argument for --key option\n");
+                fprintf(stderr, "[ERROR]: invalid argument for --key option\n");
                 return 1;
             }
             unsigned char key[16];
@@ -156,53 +160,65 @@ main(int argc, char** argv)
             unsigned char kid[16];
             if (strlen(keyid_text) == 32) {
                 if (AP4_ParseHex(keyid_text, kid, 16)) {
-                    fprintf(stderr, "ERROR: invalid hex format for key id\n");
+                    fprintf(stderr, "[ERROR]: invalid hex format for key id\n");
                     return 1;
                 }
-            } else {
+            }
+            else {
                 track_id = (unsigned int)strtoul(keyid_text, NULL, 10);
                 if (track_id == 0) {
-                    fprintf(stderr, "ERROR: invalid key id\n");
+                    fprintf(stderr, "[ERROR]: invalid key id\n");
                     return 1;
                 }
             }
             if (AP4_ParseHex(key_text, key, 16)) {
-                fprintf(stderr, "ERROR: invalid hex format for key\n");
+                fprintf(stderr, "[ERROR]: invalid hex format for key\n");
                 return 1;
             }
             // set the key in the map
             if (track_id) {
                 key_map.SetKey(track_id, key, 16);
-            } else {
+            }
+            else {
                 key_map.SetKeyForKid(kid, key, 16);
             }
-        } else if (!strcmp(arg, "--fragments-info")) {
+        }
+        else if (!strcmp(arg, "--fragments-info")) {
             arg = *++argv;
             if (arg == NULL) {
-                fprintf(stderr, "ERROR: missing argument for --fragments-info option\n");
+                fprintf(stderr, "[ERROR]: missing argument for --fragments-info option\n");
                 return 1;
             }
             fragments_info_filename = arg;
-        } else if (!strcmp(arg, "--show-progress")) {
-            show_progress = true;
-        } else if (input_filename == NULL) {
+        }
+        else if (!strcmp(arg, "--silent")) {
+            show_progress = false;
+        }
+        else if (input_filename == NULL) {
             input_filename = arg;
-        } else if (output_filename == NULL) {
+        }
+        else if (output_filename == NULL) {
             output_filename = arg;
-        } else {
-            fprintf(stderr, "ERROR: unexpected argument (%s)\n", arg);
+        }
+        else if (info == NULL) {
+            info = arg;
+        }else {
+            fprintf(stderr, "[ERROR]: unexpected argument (%s)\n", arg);
             return 1;
         }
     }
 
     // check the arguments
     if (input_filename == NULL) {
-        fprintf(stderr, "ERROR: missing input filename\n");
+        fprintf(stderr, "[ERROR]: missing input filename\n");
         return 1;
     }
     if (output_filename == NULL) {
-        fprintf(stderr, "ERROR: missing output filename\n");
+        fprintf(stderr, "[ERROR]: missing output filename\n");
         return 1;
+    }
+    if (info == NULL) {
+        info= "";
     }
 
     // create the input stream
@@ -210,7 +226,7 @@ main(int argc, char** argv)
     AP4_ByteStream* input = NULL;
     result = AP4_FileByteStream::Create(input_filename, AP4_FileByteStream::STREAM_MODE_READ, input);
     if (AP4_FAILED(result)) {
-        fprintf(stderr, "ERROR: cannot open input file (%s) %d\n", input_filename, result);
+        fprintf(stderr, "[ERROR]: cannot open input file (%s) %d\n", input_filename, result);
         return 1;
     }
 
@@ -218,7 +234,7 @@ main(int argc, char** argv)
     AP4_ByteStream* output = NULL;
     result = AP4_FileByteStream::Create(output_filename, AP4_FileByteStream::STREAM_MODE_WRITE, output);
     if (AP4_FAILED(result)) {
-        fprintf(stderr, "ERROR: cannot open output file (%s) %d\n", output_filename, result);
+        fprintf(stderr, "[ERROR]: cannot open output file (%s) %d\n", output_filename, result);
         return 1;
     }
 
@@ -227,14 +243,17 @@ main(int argc, char** argv)
     if (fragments_info_filename) {
         result = AP4_FileByteStream::Create(fragments_info_filename, AP4_FileByteStream::STREAM_MODE_READ, fragments_info);
         if (AP4_FAILED(result)) {
-            fprintf(stderr, "ERROR: cannot open fragments info file (%s)\n", fragments_info_filename);
+            fprintf(stderr, "[ERROR]: cannot open fragments info file (%s)\n", fragments_info_filename);
             return 1;
         }
     }
 	
-	fflush(stdout);
-	fprintf(stdout, "Starting Decryption\n");
-	fflush(stdout);
+    // INITIAL PRINT INFO
+    /*if (info != NULL) {
+	    fflush(stdout);
+        printf("%s\n", info);
+	    fflush(stdout);
+    }*/
 	
 	auto start = std::chrono::steady_clock::now();
 
@@ -300,25 +319,21 @@ main(int argc, char** argv)
         result = processor->Process(*input, *output, show_progress?&listener:NULL);
     }
     if (AP4_FAILED(result)) {
-        fprintf(stderr, "ERROR: failed to process the file (%d)\n", result);
+        fprintf(stderr, "[ERROR]: failed to process the file (%d)\n", result);
     } else {
 		errors = false;
 	}
-
     // cleanup
     delete processor;
     input->Release();
     output->Release();
 	
-	auto end = std::chrono::steady_clock::now();
-	
+	// auto end = std::chrono::steady_clock::now();
+	   
+    // RESULT INFO HERE
 	if(errors == false) {
-		fprintf(stdout, "\nDecryption took: ");
-		display(std::cout, std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()));
-		fprintf(stdout, "\n");
-		fflush(stdout);
-		fprintf(stdout, "Decrypted successfully\n\n");
-		fflush(stdout);
+        fflush(stdout);
+        printf("\n");
 	}
 
     return 0;

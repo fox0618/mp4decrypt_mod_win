@@ -53,7 +53,7 @@ PrintUsageAndExit()
         "usage: mp4dcfpackager --method <method> [options] <input> <output>\n"
         "  --method: <method> is NULL, CBC or CTR\n"
         "  Options:\n"
-        "  --show-progress: show progress details\n"
+        "  --silent: Don't show progress bar\n"
         "  --content-type:  content MIME type\n"
         "  --content-id:    content ID\n"
         "  --rights-issuer: rights issuer URL\n"
@@ -122,8 +122,8 @@ main(int argc, char** argv)
                 fprintf(stderr, "ERROR: invalid value for --method argument\n");
                 return 1;
             }
-        } else if (!strcmp(arg, "--show-progress")) {
-            show_progress = true;
+        } else if (!strcmp(arg, "--silent")) {
+            show_progress = false;
         } else if (!strcmp(arg, "--content-type")) {
             content_type = *++argv;
             if (content_type == NULL) {
